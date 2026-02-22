@@ -157,6 +157,12 @@ const ChatWidget = () => {
             });
 
             const data = await response.json();
+
+            if (!response.ok) {
+                const errMsg = typeof data.error === 'string' ? data.error : data.error?.message || 'Failed to fetch AI response.';
+                throw new Error(errMsg);
+            }
+
             const aiContent = data.choices?.[0]?.message?.content || "Sorry, I couldn't process that.";
 
             setMessagesForCurrentChat([...newMessages, { role: 'assistant', content: aiContent }]);
@@ -165,8 +171,8 @@ const ChatWidget = () => {
                 handleSpeak(aiContent);
             }
         } catch (error) {
-            console.error(error);
-            setMessagesForCurrentChat([...newMessages, { role: 'assistant', content: "Connection Error. Please check API key/Proxy." }]);
+            console.error('Chat Error:', error);
+            setMessagesForCurrentChat([...newMessages, { role: 'assistant', content: `Error: ${error.message || 'Connection Error/Missing API Key.'}` }]);
         } finally {
             setIsLoading(false);
         }
