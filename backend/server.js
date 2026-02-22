@@ -1,13 +1,30 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const fetch = require('node-fetch');
+const fs = require('fs');
+
 
 const app = express();
 const PORT = 5000;
 const JWT_SECRET = 'supersecretkey_banking_simulation';
+const DB_PATH = path.join(__dirname, 'db.json');
+
+// --- File-based persistence ---
+const loadDB = () => {
+    if (!fs.existsSync(DB_PATH)) {
+        fs.writeFileSync(DB_PATH, JSON.stringify({ users: [], transactions: [] }, null, 2));
+    }
+    return JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+};
+
+const saveDB = (db) => {
+    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+};
 
 // Middleware
 app.use(cors({
@@ -17,47 +34,40 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Simulation "Database"
-const BankUser = [];
-
+// In-memory JWT tracking (acceptable to reset on restart)
 const BankUserJwt = [];
-const BankTransactions = [];
-
-// Seed passwords (hashed)
-const seedPasswords = async () => {
-    for (let user of BankUser) {
-        user.cpwd = await bcrypt.hash(user.cname.toLowerCase(), 10);
-    }
-};
-seedPasswords();
 
 // Routes
 
 // Register
 app.post('/api/register', async (req, res) => {
     const { cname, password, email } = req.body;
+    const db = loadDB();
 
-    if (BankUser.find(u => u.email === email)) {
+    if (db.users.find(u => u.email === email)) {
         return res.status(400).json({ message: 'User already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = {
-        cid: BankUser.length + 1,
+        cid: db.users.length + 1,
         cname,
         cpwd: hashedPassword,
-        balance: 1000, // Starting balance
+        balance: 1000,
         email
     };
 
-    BankUser.push(newUser);
+    db.users.push(newUser);
+    saveDB(db);
+
     res.status(201).json({ message: 'User registered successfully', user: { cid: newUser.cid, cname: newUser.cname, email: newUser.email } });
 });
 
 // Login
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-    const user = BankUser.find(u => u.email === email);
+    const db = loadDB();
+    const user = db.users.find(u => u.email === email);
 
     if (!user || !(await bcrypt.compare(password, user.cpwd))) {
         return res.status(401).json({ message: 'Invalid credentials' });
@@ -65,7 +75,6 @@ app.post('/api/login', async (req, res) => {
 
     const token = jwt.sign({ cid: user.cid, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
 
-    // Store in "BankUserJwt" table as per user request
     const tokenRecord = {
         tokenid: BankUserJwt.length + 1,
         tokenvalue: token,
@@ -77,11 +86,10 @@ app.post('/api/login', async (req, res) => {
     console.log('--- BankUserJwt Table Updated ---');
     console.table(BankUserJwt);
 
-    // Set cookie
     res.cookie('token', token, {
         httpOnly: true,
-        secure: false, // development
-        maxAge: 3600000 // 1 hour
+        secure: false,
+        maxAge: 3600000
     });
 
     res.json({ message: 'Login successful', user: { cid: user.cid, cname: user.cname, email: user.email } });
@@ -103,16 +111,11 @@ app.get('/api/balance', (req, res) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = BankUser.find(u => u.cid === decoded.cid);
+        const db = loadDB();
+        const user = db.users.find(u => u.cid === decoded.cid);
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Verify if token exists in our "BankUserJwt" table
-        const tokenInDb = BankUserJwt.find(t => t.tokenvalue === token);
-        if (!tokenInDb) {
-            return res.status(401).json({ message: 'Unauthorized: Token not in DB' });
         }
 
         res.json({ balance: user.balance, cname: user.cname });
@@ -121,7 +124,7 @@ app.get('/api/balance', (req, res) => {
     }
 });
 
-// Transfer Money (Bonus feature implied by diagram)
+// Transfer Money
 app.post('/api/transfer', (req, res) => {
     const token = req.cookies.token;
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
@@ -129,9 +132,10 @@ app.post('/api/transfer', (req, res) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const { recipientEmail, amount } = req.body;
+        const db = loadDB();
 
-        const sender = BankUser.find(u => u.cid === decoded.cid);
-        const recipient = BankUser.find(u => u.email === recipientEmail);
+        const sender = db.users.find(u => u.cid === decoded.cid);
+        const recipient = db.users.find(u => u.email === recipientEmail);
 
         if (!recipient) return res.status(404).json({ message: 'Recipient not found' });
         if (sender.balance < amount) return res.status(400).json({ message: 'Insufficient balance' });
@@ -139,9 +143,8 @@ app.post('/api/transfer', (req, res) => {
         sender.balance -= Number(amount);
         recipient.balance += Number(amount);
 
-        // Record transaction
         const transaction = {
-            id: BankTransactions.length + 1,
+            id: db.transactions.length + 1,
             senderId: sender.cid,
             senderEmail: sender.email,
             recipientEmail: recipient.email,
@@ -149,7 +152,8 @@ app.post('/api/transfer', (req, res) => {
             timestamp: new Date().toLocaleString(),
             type: 'transfer'
         };
-        BankTransactions.push(transaction);
+        db.transactions.push(transaction);
+        saveDB(db);
 
         res.json({ message: 'Transfer successful', newBalance: sender.balance });
     } catch (err) {
@@ -164,8 +168,8 @@ app.get('/api/transactions', (req, res) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        // Returns transactions where the user is either sender or recipient
-        const userTransactions = BankTransactions.filter(t =>
+        const db = loadDB();
+        const userTransactions = db.transactions.filter(t =>
             t.senderId === decoded.cid || t.senderEmail === decoded.email || t.recipientEmail === decoded.email
         );
         res.json(userTransactions);
@@ -177,9 +181,9 @@ app.get('/api/transactions', (req, res) => {
 // AI Chat Proxy
 app.post('/api/ai/chat', async (req, res) => {
     try {
-        const hfKey = process.env.HF_API_KEY || process.env.VITE_HF_API_KEY;
-        if (!hfKey) {
-            return res.status(500).json({ error: 'HF_API_KEY is not configured on the server.' });
+        const hfKey = process.env.HF_API_KEY;
+        if (!hfKey || hfKey === 'your_huggingface_api_key_here') {
+            return res.status(500).json({ error: 'HF_API_KEY is not configured on the server. Please add your Hugging Face API key to backend/.env' });
         }
 
         const response = await fetch('https://router.huggingface.co/v1/chat/completions', {
