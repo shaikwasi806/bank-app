@@ -6,8 +6,12 @@
             "destination": "/backend/server.js"
         },
         {
+            "source": "/assets/(.*)",
+            "destination": "/bank-app-frontend/assets/$1"
+        },
+        {
             "source": "/(.*)",
-            "destination": "/bank-app-frontend/dist/$1"
+            "destination": "/bank-app-frontend/index.html"
         }
     ],
     "builds": [
