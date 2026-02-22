@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "dev": "npm run dev --prefix bank-app-frontend",
+    "build": "npm run build --prefix bank-app-frontend",
+    "backend": "npm start --prefix backend",
+    "start": "npm start --prefix backend"
+  },
+  "dependencies": {
+    "axios": "^1.13.5",
+    "framer-motion": "^12.34.2",
+    "lucide-react": "^0.574.0",
+    "react-router-dom": "^7.13.0"
+  }
+}

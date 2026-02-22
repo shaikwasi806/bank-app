@@ -1,0 +1,9 @@
+node_modules
+.env
+dist
+.DS_Store
+.vercel
+*.log
+backend/node_modules
+bank-app-frontend/node_modules
+bank-app-frontend/dist

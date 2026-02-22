@@ -1,0 +1,30 @@
+{
+    "version": 2,
+    "rewrites": [
+        {
+            "source": "/api/hf/(.*)",
+            "destination": "https://router.huggingface.co/v1/$1"
+        },
+        {
+            "source": "/api/(.*)",
+            "destination": "/backend/server.js"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/bank-app-frontend/$1"
+        }
+    ],
+    "builds": [
+        {
+            "src": "bank-app-frontend/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        },
+        {
+            "src": "backend/server.js",
+            "use": "@vercel/node"
+        }
+    ]
+}
