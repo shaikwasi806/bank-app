@@ -141,10 +141,9 @@ const ChatWidget = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/hf/chat/completions', {
+            const response = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${import.meta.env.VITE_HF_API_KEY}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({

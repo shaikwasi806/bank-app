@@ -2,10 +2,6 @@
     "version": 2,
     "rewrites": [
         {
-            "source": "/api/hf/(.*)",
-            "destination": "https://router.huggingface.co/v1/$1"
-        },
-        {
             "source": "/api/(.*)",
             "destination": "/backend/server.js"
         },
