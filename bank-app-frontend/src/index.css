@@ -134,6 +134,42 @@ body::after {
     z-index: 100;
 }
 
+@media (max-width: 768px) {
+    #root {
+        padding: 1rem;
+    }
+
+    .nav {
+        padding: 0 1rem;
+        height: 60px;
+    }
+
+    .nav-logo {
+        font-size: 1.25rem;
+    }
+
+    .glass {
+        padding: 1rem !important;
+        border-radius: 1rem;
+    }
+
+    /* Layout adjustments for Dashboard */
+    .dashboard-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+
+    .btn-primary {
+        padding: 0.75rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .form-input {
+        padding: 0.75rem 1rem;
+    }
+}
+
 .nav-logo {
     font-size: 1.75rem;
     font-weight: 900;
