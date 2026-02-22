@@ -3,6 +3,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const fetch = require('node-fetch');
 
 const app = express();
 const PORT = 5000;
