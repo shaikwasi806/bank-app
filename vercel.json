@@ -7,7 +7,7 @@
         },
         {
             "source": "/(.*)",
-            "destination": "/bank-app-frontend/$1"
+            "destination": "/bank-app-frontend/dist/$1"
         }
     ],
     "builds": [
